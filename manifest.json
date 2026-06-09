@@ -1,0 +1,16 @@
+{
+  "name": "FTMO Lot Calculator",
+  "short_name": "FTMO Lot",
+  "description": "Υπολογισμός lot size & risk για FTMO — Forex, US30, US100",
+  "lang": "el",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f1117",
+  "theme_color": "#0f1117",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
