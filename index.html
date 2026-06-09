@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>FTMO Lot Calculator — EUR</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--sf:#1a1d27;--sf2:#22263a;
+  --bd:rgba(255,255,255,0.07);--bd2:rgba(255,255,255,0.14);
+  --tx:#f0f0f5;--mu:#8b8fa8;--hi:#4a4e6a;
+  --bl:#4f8ef7;--bl-bg:rgba(79,142,247,.12);--bl-b:rgba(79,142,247,.3);
+  --gn:#2ecc8a;--gn-bg:rgba(46,204,138,.10);--gn-b:rgba(46,204,138,.3);
+  --rd:#f76f6f;--rd-bg:rgba(247,111,111,.10);--rd-b:rgba(247,111,111,.3);
+  --am:#f0a742;--am-bg:rgba(240,167,66,.10);
+  --pu:#a78bfa;--pu-bg:rgba(167,139,250,.12);
+  --r:12px;--rs:8px;
+}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--tx);overflow:hidden}
+.layout{display:grid;grid-template-columns:400px 1fr;height:100vh}
+
+/* ─── LEFT ─── */
+.left{overflow-y:auto;overflow-x:hidden;padding:16px 14px 40px;border-right:1px solid var(--bd);scrollbar-width:thin;scrollbar-color:var(--sf2) transparent}
+.left::-webkit-scrollbar{width:4px}.left::-webkit-scrollbar-thumb{background:var(--sf2);border-radius:2px}
+
+/* ─── RIGHT ─── */
+.right{display:flex;flex-direction:column;background:#131722;overflow:hidden}
+.tab-bar{display:flex;align-items:center;gap:2px;padding:8px 10px;background:var(--sf);border-bottom:1px solid var(--bd);flex-shrink:0}
+.tab{padding:6px 14px;font-size:12px;font-weight:600;border-radius:var(--rs);border:none;background:transparent;color:var(--mu);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.tab:hover{background:var(--sf2);color:var(--tx)}.tab.active{background:var(--bl-bg);color:var(--bl)}
+.tab-content{flex:1;display:none;overflow:hidden;flex-direction:column}.tab-content.visible{display:flex}
+.chart-bar{display:flex;align-items:center;gap:10px;margin-left:auto}
+.chart-pair{font-size:15px;font-weight:700}.lp{font-size:15px;font-weight:700;color:var(--gn);min-width:85px;font-variant-numeric:tabular-nums;transition:color .3s}
+.pc{font-size:11px;font-weight:600;padding:2px 7px;border-radius:20px;display:none}
+.pc.up{background:var(--gn-bg);color:var(--gn)}.pc.dn{background:var(--rd-bg);color:var(--rd)}
+.m5d{width:8px;height:8px;border-radius:50%;background:var(--hi);cursor:pointer;flex-shrink:0;transition:all .3s}
+.m5d.on{background:var(--gn);box-shadow:0 0 5px var(--gn)}.m5d.off{background:var(--rd)}
+.tf-tabs{display:flex;gap:3px}
+.tf-btn{padding:4px 12px;font-size:11px;font-weight:700;border-radius:var(--rs);border:1px solid var(--bd2);background:transparent;color:var(--mu);cursor:pointer;transition:all .15s}
+.tf-btn:hover{background:var(--sf2);color:var(--tx)}.tf-btn.active{background:var(--bl-bg);color:var(--bl);border-color:var(--bl-b)}
+.chart-frame-wrap{flex:1;overflow:hidden}.chart-frame-wrap iframe{width:100%;height:100%;border:none;display:block}
+
+/* ─── AI TAB ─── */
+.ai-outer{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:14px;scrollbar-width:thin;scrollbar-color:var(--sf2) transparent}
+.ai-outer::-webkit-scrollbar{width:4px}.ai-outer::-webkit-scrollbar-thumb{background:var(--sf2);border-radius:2px}
+.key-bar{display:flex;align-items:center;gap:8px;background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);padding:9px 12px}
+.key-bar label{font-size:11px;color:var(--mu);white-space:nowrap;font-weight:600;letter-spacing:.04em}
+.key-bar input{flex:1;background:transparent;border:none;color:var(--tx);font-size:13px;font-family:monospace;outline:none;min-width:0}
+.key-bar input::placeholder{color:var(--hi);font-family:inherit}
+.key-save{padding:4px 11px;font-size:11px;font-weight:700;border-radius:6px;border:1px solid var(--bl-b);background:var(--bl-bg);color:var(--bl);cursor:pointer;white-space:nowrap;flex-shrink:0}
+
+/* PASTE ZONE */
+.paste-wrap{background:var(--sf);border:1px solid var(--bd2);border-radius:var(--r);overflow:hidden}
+.paste-header{padding:12px 14px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between}
+.paste-header-title{font-size:11px;font-weight:700;color:var(--hi);text-transform:uppercase;letter-spacing:.09em}
+.paste-shortcuts{display:flex;gap:6px;align-items:center}
+.kbd{display:inline-flex;align-items:center;gap:2px;background:var(--sf2);border:1px solid var(--bd2);border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;color:var(--bl);font-family:monospace}
+.paste-zone{
+  min-height:230px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:10px;
+  cursor:pointer;transition:all .2s;position:relative;
+  background:var(--bg);padding:20px;
+}
+.paste-zone:hover,.paste-zone:focus{outline:none;background:rgba(79,142,247,.04)}
+.paste-zone.drag{background:rgba(79,142,247,.09);border:2px dashed var(--bl) !important}
+.paste-zone.has-img{background:var(--bg)}
+.pz-icon{font-size:40px;line-height:1}
+.pz-title{font-size:16px;font-weight:700;color:var(--tx);text-align:center}
+.pz-sub{font-size:13px;color:var(--mu);text-align:center;line-height:1.7}
+.pz-hint{font-size:11px;color:var(--hi);text-align:center}
+.pz-preview{max-width:100%;max-height:260px;border-radius:var(--rs);object-fit:contain;display:none}
+.pz-clear{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:50%;background:var(--sf2);border:1px solid var(--bd2);color:var(--mu);font-size:13px;cursor:pointer;display:none;align-items:center;justify-content:center;transition:all .15s;line-height:1}
+.pz-clear:hover{background:var(--rd-bg);color:var(--rd);border-color:var(--rd-b)}
+
+/* ENTER hint bar */
+.enter-hint{padding:10px 14px;background:rgba(79,142,247,.07);border-top:1px solid var(--bl-b);display:none;align-items:center;justify-content:center;gap:8px;font-size:12px;color:var(--bl)}
+.enter-hint.show{display:flex}
+
+.analyze-btn{width:100%;padding:13px;font-size:15px;font-weight:700;border-radius:var(--rs);border:none;cursor:pointer;background:linear-gradient(135deg,#4f8ef7,#6c5ce7);color:#fff;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.analyze-btn:hover:not(:disabled){opacity:.9;transform:translateY(-1px)}.analyze-btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.ai-st{font-size:12px;padding:9px 12px;border-radius:var(--rs);background:var(--sf);border:1px solid var(--bd);font-family:monospace;display:none;line-height:1.5}
+.ai-st.show{display:block}
+.ai-res{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:16px;display:none;flex-direction:column;gap:12px}
+.ai-res.show{display:flex}
+.ai-rt{font-size:10px;font-weight:700;color:var(--hi);text-transform:uppercase;letter-spacing:.09em}
+.ai-pg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ai-pc{background:var(--sf2);border-radius:var(--rs);padding:11px;text-align:center}
+.ai-pl{font-size:10px;color:var(--hi);text-transform:uppercase;margin-bottom:5px}
+.ai-pv{font-size:17px;font-weight:700}
+.ai-pv.b{color:var(--bl)}.ai-pv.r{color:var(--rd)}.ai-pv.g{color:var(--gn)}
+.ai-obs{font-size:13px;color:var(--mu);line-height:1.6;padding:10px;background:var(--sf2);border-radius:var(--rs)}
+.fill-btn{padding:11px;font-size:13px;font-weight:700;border-radius:var(--rs);border:1px solid var(--gn-b);background:var(--gn-bg);color:var(--gn);cursor:pointer;transition:all .15s;text-align:center}
+.fill-btn:hover{background:rgba(46,204,138,.2)}
+
+/* ─── LEFT COMPONENTS ─── */
+.hdr{display:flex;align-items:center;gap:10px;margin-bottom:13px}
+.logo{width:38px;height:38px;border-radius:9px;flex-shrink:0;background:linear-gradient(135deg,#1e2d5a,#2a4080);display:flex;align-items:center;justify-content:center;border:1px solid var(--bl-b)}
+.logo svg{width:20px;height:20px}
+.h1t{font-size:15px;font-weight:700;color:var(--tx)}.h1s{font-size:11px;color:var(--mu);margin-top:1px}
+.badge{margin-left:auto;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;background:var(--bl-bg);color:var(--bl);border:1px solid var(--bl-b);white-space:nowrap}
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:12px 13px;margin-bottom:7px}
+.ct{font-size:10px;font-weight:700;color:var(--hi);text-transform:uppercase;letter-spacing:.09em;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.bal-row{display:flex;align-items:baseline;gap:5px;margin-bottom:8px}
+.bal-c{font-size:14px;font-weight:700;color:var(--mu)}.bal-a{font-size:28px;font-weight:700;color:var(--tx);letter-spacing:-.5px}
+.bal-ed{display:flex;align-items:center;gap:6px;background:var(--sf2);border:1px solid var(--bd);border-radius:var(--rs);padding:5px 9px}
+.bal-ed label{font-size:11px;color:var(--mu);white-space:nowrap}
+.bal-ed input{background:transparent;border:none;color:var(--tx);font-size:14px;font-weight:600;outline:none;width:100px;text-align:right}
+.bal-ed input::-webkit-inner-spin-button,.bal-ed input::-webkit-outer-spin-button{-webkit-appearance:none}
+.field{margin-bottom:8px}.field:last-child{margin-bottom:0}
+.field label{display:block;font-size:12px;color:var(--mu);margin-bottom:3px;font-weight:500}
+.field select,.field input[type=number]{width:100%;background:var(--sf2);border:1px solid var(--bd);border-radius:var(--rs);color:var(--tx);font-size:14px;padding:7px 10px;outline:none;transition:border .15s;-webkit-appearance:none;appearance:none}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238b8fa8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;cursor:pointer}
+.field select:focus,.field input[type=number]:focus{border-color:var(--bl)}
+.field input[type=number]::placeholder{color:var(--hi)}
+.field input[type=number]::-webkit-inner-spin-button,.field input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.rh{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.rl{font-size:12px;color:var(--mu);font-weight:500}.rd_{font-size:16px;font-weight:700;color:var(--bl)}.re{font-size:11px;color:var(--mu);margin-left:2px}
+input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;background:var(--sf2);outline:none;margin-bottom:8px;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:17px;height:17px;border-radius:50%;background:var(--bl);cursor:pointer;border:3px solid var(--sf);box-shadow:0 0 0 1px var(--bl)}
+input[type=range]::-moz-range-thumb{width:17px;height:17px;border-radius:50%;background:var(--bl);cursor:pointer;border:3px solid var(--sf)}
+.presets{display:flex;gap:4px}
+.preset{flex:1;padding:5px 0;font-size:11px;font-weight:600;border-radius:var(--rs);border:1px solid var(--bd);background:transparent;color:var(--mu);cursor:pointer;transition:all .15s;text-align:center}
+.preset:hover{border-color:var(--bd2);color:var(--tx);background:var(--sf2)}.preset.active{background:var(--bl-bg);color:var(--bl);border-color:var(--bl-b)}
+.rri{background:transparent;border:none;border-bottom:1px dashed var(--bl-b);color:var(--bl);font-size:16px;font-weight:700;font-family:inherit;width:52px;text-align:left;outline:none;padding:1px 3px;font-variant-numeric:tabular-nums;-webkit-appearance:none;appearance:none}
+.rri:focus{border-bottom:1px solid var(--bl);background:var(--bl-bg)}
+.rri::-webkit-inner-spin-button,.rri::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.m5r{display:flex;align-items:center;gap:7px}
+.m5i{width:9px;height:9px;border-radius:50%;background:var(--hi);flex-shrink:0;transition:all .3s}
+.m5i.on{background:var(--gn);box-shadow:0 0 6px var(--gn)}.m5i.off{background:var(--rd)}
+.m5t{font-size:12px;color:var(--mu);flex:1}
+.mb{padding:3px 9px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid var(--bd2);background:transparent;color:var(--mu);cursor:pointer;transition:all .15s}
+.mb:hover{background:var(--sf2);color:var(--tx)}.mb.bl{border-color:var(--bl-b);color:var(--bl);background:var(--bl-bg)}
+.m5e{margin-top:10px;border-top:1px solid var(--bd);padding-top:10px;display:none}.m5e.open{display:block}
+.m5inf{font-size:11px;color:var(--mu);line-height:1.8;margin-bottom:8px}
+.m5inf code{background:var(--sf2);padding:1px 5px;border-radius:4px;font-size:10px;color:var(--bl)}
+.m5dl{width:100%;padding:7px;font-size:11px;font-weight:700;border-radius:var(--rs);border:1px solid rgba(167,139,250,.3);background:var(--pu-bg);color:var(--pu);cursor:pointer;margin-bottom:6px}
+.m5af{width:100%;padding:7px;font-size:11px;font-weight:700;border-radius:var(--rs);border:1px solid var(--gn-b);background:var(--gn-bg);color:var(--gn);cursor:pointer}
+.m5af:disabled{opacity:.3;cursor:not-allowed}.m5af:not(:disabled):hover{background:rgba(46,204,138,.2)}
+
+/* ─── RESULTS ─── */
+.res-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:14px;margin-top:7px}
+.empty{text-align:center;padding:22px 0;color:var(--hi);font-size:12px}.ei{font-size:22px;margin-bottom:5px}
+
+/* MT5-style lot box */
+.lot-box{background:var(--sf2);border-radius:var(--r);padding:16px;margin-bottom:10px;display:flex;flex-direction:column;align-items:center;border:1px solid var(--bd)}
+.lot-lbl{font-size:10px;font-weight:700;color:var(--hi);text-transform:uppercase;letter-spacing:.09em;margin-bottom:8px}
+.lot-row{display:flex;align-items:center;justify-content:center;gap:12px}
+.lot-dir{font-size:13px;font-weight:700;padding:4px 14px;border-radius:20px}
+.lot-dir.buy{background:var(--bl-bg);color:var(--bl)}.lot-dir.sell{background:var(--rd-bg);color:var(--rd)}
+.lot-num{font-size:56px;font-weight:700;color:var(--tx);line-height:1;letter-spacing:-2px;font-variant-numeric:tabular-nums}
+.lot-u{font-size:14px;color:var(--mu);font-weight:500;align-self:flex-end;margin-bottom:8px}
+.lot-sub{font-size:11px;color:var(--hi);margin-top:6px}
+.mets{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.met{background:var(--sf2);border-radius:var(--rs);padding:8px 7px;text-align:center}
+.ml{font-size:10px;color:var(--hi);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+.mv{font-size:13px;font-weight:700}.mv.b{color:var(--bl)}.mv.g{color:var(--gn)}.mv.r{color:var(--rd)}.mv.w{color:var(--tx)}
+.lims{display:flex;gap:10px;flex-wrap:wrap;margin-top:9px;padding-top:9px;border-top:1px solid var(--bd)}
+.li{font-size:10px;color:var(--mu)}.li strong{color:var(--tx);font-weight:700}
+.an{font-size:10px;color:var(--hi);margin-top:6px}
+.wb{display:flex;gap:6px;background:var(--am-bg);border:1px solid rgba(240,167,66,.2);border-radius:var(--rs);padding:8px 10px;margin-top:7px}
+.wb span{font-size:11px;color:var(--am);line-height:1.5}
+option{background:#1a1d27;color:#f0f0f5}optgroup{color:#4a4e6a}
+
+/* ═══════════════════ MOBILE / RESPONSIVE ═══════════════════ */
+@media (max-width: 900px){
+  html,body{overflow:auto;height:auto;min-height:100%;-webkit-text-size-adjust:100%}
+  .layout{grid-template-columns:1fr;height:auto;min-height:100vh}
+  .left{border-right:none;border-bottom:1px solid var(--bd);padding:12px 12px 24px;overflow:visible}
+  .right{height:auto;min-height:70vh}
+  .chart-frame-wrap{min-height:55vh}
+  .ai-outer{overflow-y:visible;padding:14px}
+}
+
+@media (max-width: 600px){
+  .hdr{gap:8px;margin-bottom:10px}
+  .h1t{font-size:14px}.h1s{font-size:10px}
+  .logo{width:34px;height:34px}
+  .bal-a{font-size:24px}
+  .bal-row{gap:4px}
+  .card{padding:10px 11px;margin-bottom:6px}
+  /* font-size 16px ΠΑΝΩ στα inputs αποτρέπει iOS Safari auto-zoom στο focus */
+  .field select,.field input[type=number],.bal-ed input,.key-bar input{font-size:16px}
+  .bal-ed input{width:90px}
+  .lot-num{font-size:44px;letter-spacing:-1.5px}
+  .lot-box{padding:14px}
+  .met{padding:7px 5px}
+  .ml{font-size:9px}.mv{font-size:12px}
+  .tab{padding:6px 10px;font-size:11px}
+  .tab-bar{padding:6px 8px;flex-wrap:wrap;gap:4px}
+  .chart-bar{gap:6px;width:100%;justify-content:flex-end;margin-top:4px}
+  .chart-pair{font-size:12px}
+  .lp{font-size:12px;min-width:60px}
+  .tf-tabs{gap:2px}
+  .tf-btn{padding:4px 8px;font-size:10px}
+  .ai-outer{padding:12px;gap:12px}
+  .paste-zone{min-height:180px;padding:16px}
+  .pz-icon{font-size:32px}
+  .pz-title{font-size:14px}
+  .pz-sub{font-size:12px;line-height:1.5}
+  .key-bar{flex-wrap:wrap;gap:6px;padding:8px 10px}
+  .analyze-btn{padding:12px;font-size:13px}
+  .ai-pv{font-size:14px}
+  .lims{gap:6px}.li{font-size:10px}
+  .res-card{padding:12px}
+}
+
+@media (max-width: 400px){
+  .lot-num{font-size:38px}
+  .lot-row{gap:8px}
+  .lot-dir{padding:3px 10px;font-size:11px}
+  .mets{gap:4px}
+  .met{padding:6px 4px}
+  .ai-pg{gap:5px}
+}
+
+/* Touch-friendly tap targets για κινητό */
+@media (pointer: coarse){
+  .preset,.tf-btn,.tab,.mb{min-height:34px}
+  .analyze-btn,.fill-btn,.key-save{min-height:44px}
+  .pz-clear{width:32px;height:32px}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ═══ LEFT ═══ -->
+<div class="left">
+  <div class="hdr">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none">
+        <polyline points="2,18 8,12 13,16 22,6" stroke="#4f8ef7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="16,6 22,6 22,12" stroke="#4f8ef7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div><div class="h1t">Lot Calculator</div><div class="h1s">FTMO Funded Account</div></div>
+    <div class="badge">FTMO</div>
+  </div>
+
+  <!-- Balance -->
+  <div class="card">
+    <div class="ct"><span>Λογαριασμός</span><span style="color:var(--gn);font-size:10px;font-weight:700">MT5 · EUR</span></div>
+    <div class="bal-row"><span class="bal-c">€</span><span class="bal-a" id="balDisp">80,291.45</span></div>
+    <div class="bal-ed">
+      <label>Balance:</label>
+      <input type="text" inputmode="decimal" id="balInp" value="80291.45" oninput="onBal()">
+      <span style="font-size:12px;color:var(--mu)">EUR</span>
+    </div>
+  </div>
+
+  <!-- Pair & Prices -->
+  <div class="card">
+    <div class="ct">Ζεύγος &amp; Τιμές</div>
+    <div class="field">
+      <label>Ζεύγος συναλλάγματος</label>
+      <select id="pair">
+        <optgroup label="── Majors ──">
+          <option value="EURUSD|0.0001|USD|FX:EURUSD|EUR/USD">EUR/USD</option>
+          <option value="GBPUSD|0.0001|USD|FX:GBPUSD|GBP/USD">GBP/USD</option>
+          <option value="USDJPY|0.01|JPY|FX:USDJPY|USD/JPY">USD/JPY</option>
+          <option value="USDCHF|0.0001|CHF|FX:USDCHF|USD/CHF">USD/CHF</option>
+          <option value="USDCAD|0.0001|CAD|FX:USDCAD|USD/CAD">USD/CAD</option>
+          <option value="AUDUSD|0.0001|USD|FX:AUDUSD|AUD/USD">AUD/USD</option>
+          <option value="NZDUSD|0.0001|USD|FX:NZDUSD|NZD/USD">NZD/USD</option>
+        </optgroup>
+        <optgroup label="── EUR Crosses ──">
+          <option value="EURGBP|0.0001|GBP|FX:EURGBP|EUR/GBP">EUR/GBP</option>
+          <option value="EURJPY|0.01|JPY|FX:EURJPY|EUR/JPY">EUR/JPY</option>
+          <option value="EURCAD|0.0001|CAD|FX:EURCAD|EUR/CAD">EUR/CAD</option>
+          <option value="EURCHF|0.0001|CHF|FX:EURCHF|EUR/CHF">EUR/CHF</option>
+          <option value="EURAUD|0.0001|AUD|FX:EURAUD|EUR/AUD">EUR/AUD</option>
+          <option value="EURNZD|0.0001|NZD|FX:EURNZD|EUR/NZD">EUR/NZD</option>
+          <option value="EURNOK|0.0001|NOK|FX:EURNOK|EUR/NOK">EUR/NOK</option>
+          <option value="EURSEK|0.0001|SEK|FX:EURSEK|EUR/SEK">EUR/SEK</option>
+        </optgroup>
+        <optgroup label="── GBP Crosses ──">
+          <option value="GBPJPY|0.01|JPY|FX:GBPJPY|GBP/JPY">GBP/JPY</option>
+          <option value="GBPCAD|0.0001|CAD|FX:GBPCAD|GBP/CAD">GBP/CAD</option>
+          <option value="GBPCHF|0.0001|CHF|FX:GBPCHF|GBP/CHF">GBP/CHF</option>
+          <option value="GBPAUD|0.0001|AUD|FX:GBPAUD|GBP/AUD">GBP/AUD</option>
+          <option value="GBPNZD|0.0001|NZD|FX:GBPNZD|GBP/NZD">GBP/NZD</option>
+        </optgroup>
+        <optgroup label="── JPY Crosses ──">
+          <option value="CHFJPY|0.01|JPY|FX:CHFJPY|CHF/JPY" selected>CHF/JPY</option>
+          <option value="AUDJPY|0.01|JPY|FX:AUDJPY|AUD/JPY">AUD/JPY</option>
+          <option value="NZDJPY|0.01|JPY|FX:NZDJPY|NZD/JPY">NZD/JPY</option>
+          <option value="CADJPY|0.01|JPY|FX:CADJPY|CAD/JPY">CAD/JPY</option>
+        </optgroup>
+        <optgroup label="── AUD / NZD / CAD ──">
+          <option value="AUDCAD|0.0001|CAD|FX:AUDCAD|AUD/CAD">AUD/CAD</option>
+          <option value="AUDCHF|0.0001|CHF|FX:AUDCHF|AUD/CHF">AUD/CHF</option>
+          <option value="AUDNZD|0.0001|NZD|FX:AUDNZD|AUD/NZD">AUD/NZD</option>
+          <option value="NZDCAD|0.0001|CAD|FX:NZDCAD|NZD/CAD">NZD/CAD</option>
+          <option value="NZDCHF|0.0001|CHF|FX:NZDCHF|NZD/CHF">NZD/CHF</option>
+          <option value="CADCHF|0.0001|CHF|FX:CADCHF|CAD/CHF">CAD/CHF</option>
+        </optgroup>
+        <optgroup label="── Exotics ──">
+          <option value="USDMXN|0.0001|MXN|FX:USDMXN|USD/MXN">USD/MXN</option>
+          <option value="USDZAR|0.0001|ZAR|FX:USDZAR|USD/ZAR">USD/ZAR</option>
+          <option value="USDNOK|0.0001|NOK|FX:USDNOK|USD/NOK">USD/NOK</option>
+          <option value="USDSEK|0.0001|SEK|FX:USDSEK|USD/SEK">USD/SEK</option>
+          <option value="USDPLN|0.0001|PLN|FX:USDPLN|USD/PLN">USD/PLN</option>
+          <option value="USDSGD|0.0001|SGD|FX:USDSGD|USD/SGD">USD/SGD</option>
+          <option value="USDTRY|0.0001|TRY|FX:USDTRY|USD/TRY">USD/TRY</option>
+        </optgroup>
+        <optgroup label="── Indices (CFDs) ──">
+          <option value="US30.cash|1|USD|OANDA:US30USD|US30.cash (Dow Jones)|1">US30.cash (Dow Jones)</option>
+          <option value="US100.cash|1|USD|OANDA:NAS100USD|US100.cash (Nasdaq)|1">US100.cash (Nasdaq)</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="row">
+      <div class="field"><label>Entry Price</label><input type="text" inputmode="decimal" id="entry" placeholder="199.800"></div>
+      <div class="field"><label>Stop Loss</label><input type="text" inputmode="decimal" id="sl" placeholder="200.000"></div>
+    </div>
+    <div class="field">
+      <label>Take Profit <span style="color:var(--hi);font-weight:400">(προαιρετικό)</span></label>
+      <input type="text" inputmode="decimal" id="tp" placeholder="199.230">
+    </div>
+  </div>
+
+  <!-- Risk -->
+  <div class="card">
+    <div class="ct">Ρίσκο ανά trade</div>
+    <div class="rh">
+      <span class="rl">Ποσοστό ρίσκου</span>
+      <span><span class="rd_" id="rD">1%</span><span class="re" id="rE">= €803</span></span>
+    </div>
+    <input type="range" id="rR" min="0.25" max="5" step="0.25" value="1">
+    <div class="presets" id="riskPresets">
+      <button class="preset" data-val="0.5" onclick="setR(.5)">0.5%</button>
+      <button class="preset active" data-val="1" onclick="setR(1)">1%</button>
+      <button class="preset" data-val="1.5" onclick="setR(1.5)">1.5%</button>
+      <button class="preset" data-val="2" onclick="setR(2)">2%</button>
+      <button class="preset" data-val="2.5" onclick="setR(2.5)">2.5%</button>
+    </div>
+  </div>
+
+  <!-- R:R Target -->
+  <div class="card">
+    <div class="ct"><span>Take Profit Target (R:R)</span><span style="color:var(--pu);font-size:10px;font-weight:700">AUTO TP</span></div>
+    <div class="rh">
+      <span class="rl">Risk : Reward</span>
+      <span><span class="rd_">1 : <input type="text" id="rrInp" class="rri" value="2" inputmode="decimal"></span><span class="re">→ auto TP</span></span>
+    </div>
+    <input type="range" id="rrR" min="0.5" max="5" step="0.25" value="2">
+    <div class="presets" id="rrPresets">
+      <button class="preset" data-val="1" onclick="setRR(1)">1:1</button>
+      <button class="preset" data-val="1.5" onclick="setRR(1.5)">1:1.5</button>
+      <button class="preset active" data-val="2" onclick="setRR(2)">1:2</button>
+      <button class="preset" data-val="2.5" onclick="setRR(2.5)">1:2.5</button>
+      <button class="preset" data-val="3" onclick="setRR(3)">1:3</button>
+    </div>
+  </div>
+
+  <!-- MT5 -->
+  <div class="card">
+    <div class="ct"><span>MetaTrader 5 Bridge</span><div class="m5i" id="m5i"></div></div>
+    <div class="m5r">
+      <span class="m5t" id="m5t">Αναζήτηση...</span>
+      <button class="mb" onclick="togM5()">Οδηγίες</button>
+      <button class="mb bl" onclick="m5Ping()">Retry</button>
+    </div>
+    <div class="m5e" id="m5e">
+      <div class="m5inf">
+        1. <code>pip install MetaTrader5 flask flask-cors</code><br>
+        2. Κατέβασε και τρέξε το <code>mt5_bridge.py</code><br>
+        3. Αυτόματη σύνδεση στο <code>localhost:5678</code>
+      </div>
+      <button class="m5dl" onclick="dlM5()">⬇ Κατέβασε mt5_bridge.py</button>
+      <button class="m5af" id="m5af" disabled onclick="fillM5()">Auto-fill τιμή από MT5</button>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="res-card" id="resCard">
+    <div class="empty"><div class="ei">📊</div><div>Συμπλήρωσε entry και SL<br>για να δεις το lot size</div></div>
+  </div>
+</div>
+
+<!-- ═══ RIGHT ═══ -->
+<div class="right">
+  <div class="tab-bar">
+    <button class="tab active" id="tabChart" onclick="swTab('chart')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Live Chart
+    </button>
+    <button class="tab" id="tabAI" onclick="swTab('ai')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      AI Screenshot
+    </button>
+    <div class="chart-bar" id="chartBar">
+      <span class="chart-pair" id="cpair">CHF/JPY</span>
+      <span class="lp" id="lp">—</span>
+      <span class="pc" id="pc"></span>
+      <div class="m5d" id="m5dTop" onclick="togM5()"></div>
+      <div class="tf-tabs">
+        <button class="tf-btn" id="tfH1" onclick="setTF('60')">H1</button>
+        <button class="tf-btn active" id="tfH4" onclick="setTF('240')">H4</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="tab-content visible" id="contentChart">
+    <div class="chart-frame-wrap">
+      <iframe id="tvF" src="" frameborder="0" scrolling="no"></iframe>
+    </div>
+  </div>
+
+  <!-- AI Screenshot -->
+  <div class="tab-content" id="contentAI">
+    <div class="ai-outer">
+
+      <div class="key-bar">
+        <label>CLAUDE API KEY</label>
+        <input type="password" id="apiKey" placeholder="sk-ant-api03-…" autocomplete="off">
+        <button class="key-save" onclick="saveKey()">Αποθήκευση</button>
+      </div>
+
+      <!-- PASTE ZONE -->
+      <div class="paste-wrap">
+        <div class="paste-header">
+          <span class="paste-header-title">Screenshot Chart — Επικόλληση</span>
+          <div class="paste-shortcuts">
+            <span class="kbd">Ctrl+V</span>
+            <span style="font-size:11px;color:var(--hi)">paste</span>
+            <span style="font-size:11px;color:var(--hi);margin:0 4px">·</span>
+            <span class="kbd">Enter</span>
+            <span style="font-size:11px;color:var(--hi)">analyze</span>
+          </div>
+        </div>
+
+        <div class="paste-zone" id="pz" tabindex="0">
+          <button class="pz-clear" id="pzX" onclick="clearPaste(event)">✕</button>
+          <div id="pzInn">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+              <div class="pz-icon">📸</div>
+              <div class="pz-title">Κάνε paste το screenshot εδώ</div>
+              <div class="pz-sub">
+                <span class="kbd">Ctrl+V</span> για paste — <span class="kbd">Enter</span> για ανάλυση<br>
+                ή <span style="color:var(--bl);font-weight:700">Drag &amp; Drop</span> · ή κλικ για file picker
+              </div>
+              <div class="pz-hint">Δουλεύει με MT5 · TradingView · cTrader · οποιοδήποτε chart</div>
+            </div>
+          </div>
+          <img id="pzImg" class="pz-preview">
+        </div>
+
+        <div class="enter-hint" id="enterHint">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg>
+          Screenshot φορτώθηκε — πάτα <strong style="margin:0 4px">Enter</strong> για ανάλυση με AI
+        </div>
+      </div>
+
+      <button class="analyze-btn" id="anlBtn" disabled onclick="doAnalyze()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Ανάλυση με AI — Εξαγωγή Entry / SL / TP
+      </button>
+
+      <div class="ai-st" id="aiSt"></div>
+
+      <div class="ai-res" id="aiRes">
+        <div class="ai-rt">Αποτελέσματα AI Ανάλυσης</div>
+        <div class="ai-pg">
+          <div class="ai-pc"><div class="ai-pl">Entry</div><div class="ai-pv b" id="aEntry">—</div></div>
+          <div class="ai-pc"><div class="ai-pl">Stop Loss</div><div class="ai-pv r" id="aSL">—</div></div>
+          <div class="ai-pc"><div class="ai-pl">Take Profit</div><div class="ai-pv g" id="aTP">—</div></div>
+        </div>
+        <div class="ai-obs" id="aNote"></div>
+        <button class="fill-btn" onclick="fillAI()">↙ Αυτόματη συμπλήρωση στον Calculator</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+/* ══ STATE ══ */
+var BAL=80291.45, rPct=1, rrRatio=2, curTF='240', pTimer=null, m5Ok=false, imgB64=null, aiDat=null;
+
+/* ══ EUR pip value per pip per lot
+   Formula: pip_value_EUR = pip_size × 100,000 × (quote_to_EUR_rate)
+   This correctly handles JPY (pip_size=0.01 → ×1000) vs others (0.0001 → ×10)
+═══ */
+var EUR_RATE={
+  USD:.917, EUR:1, GBP:1.165, JPY:.00617,
+  CHF:1.045, CAD:.679, AUD:.596, NZD:.551,
+  MXN:.0457, ZAR:.0498, NOK:.0838, SEK:.0873,
+  PLN:.234, SGD:.681, TRY:.0261
+};
+
+function pipVal(pipSz, qCcy, contractSize){
+  /* pip_value in EUR per lot
+     Forex:   contractSize=100000 (default standard lot)
+     Indices: contractSize=1 → FTMO US30.cash / US100.cash = $1 per point per lot */
+  return pipSz * (contractSize||100000) * (EUR_RATE[qCcy]||.917);
+}
+
+function fmtLot(v){
+  /* MT5-style: 6.00→"6", 3.70→"3.7", 7.68→"7.68" */
+  return parseFloat(v.toFixed(2)).toString();
+}
+
+function pp(){ return document.getElementById('pair').value.split('|'); }
+
+/* Parse numeric input — δέχεται και κόμμα (ελληνικό keyboard κινητού) ως δεκαδικό */
+function numVal(id){ var el=document.getElementById(id); return el?parseFloat(String(el.value||'').replace(',','.')):NaN; }
+
+/* ══ TAB SWITCH — fixed: uses exact element IDs ══ */
+function swTab(t){
+  /* contentChart / contentAI — exact IDs, no string manipulation */
+  var map={
+    chart:{cont:'contentChart', tab:'tabChart'},
+    ai:   {cont:'contentAI',    tab:'tabAI'}
+  };
+  Object.keys(map).forEach(function(k){
+    var cc=document.getElementById(map[k].cont);
+    var ct=document.getElementById(map[k].tab);
+    if(cc) cc.classList.toggle('visible', k===t);
+    if(ct) ct.classList.toggle('active', k===t);
+  });
+  var cb=document.getElementById('chartBar');
+  if(cb) cb.style.display = t==='chart'?'flex':'none';
+}
+
+/* ══ BALANCE ══ */
+function onBal(){
+  BAL=numVal('balInp')||80291.45;
+  var el=document.getElementById('balDisp');
+  if(el) el.textContent=BAL.toLocaleString('el-GR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  updR(); calc();
+}
+
+/* ══ CHART (TradingView iframe — no JS library, no errors) ══ */
+function loadChart(sym,tf){
+  var f=document.getElementById('tvF');
+  if(!f) return;
+  f.src='https://s.tradingview.com/widgetembed/?frameElementId=tv_chart&symbol='+encodeURIComponent(sym)+'&interval='+tf+'&theme=dark&style=1&locale=el&toolbar_bg=%231a1d27&hide_side_toolbar=0&allow_symbol_change=0&save_image=0&withdateranges=1&studies=RSI%40tv-studilib%2CMACD%40tv-studilib';
+  pollP(sym);
+}
+
+function setTF(tf){
+  curTF=tf;
+  var h1=document.getElementById('tfH1'), h4=document.getElementById('tfH4');
+  if(h1) h1.classList.toggle('active',tf==='60');
+  if(h4) h4.classList.toggle('active',tf==='240');
+  loadChart(pp()[3],tf);
+}
+
+function onPairChange(){
+  var p=pp();
+  var cpEl=document.getElementById('cpair'), lpEl=document.getElementById('lp'), pcEl=document.getElementById('pc');
+  if(cpEl) cpEl.textContent=p[4];
+  if(lpEl){ lpEl.textContent='—'; lpEl.style.color='var(--gn)'; }
+  if(pcEl) pcEl.style.display='none';
+  loadChart(p[3],curTF); calc();
+}
+
+/* ══ LIVE PRICE ══ */
+function pollP(sym){
+  if(pTimer) clearInterval(pTimer);
+  fetchP(sym);
+  pTimer=setInterval(function(){fetchP(sym);},7000);
+}
+function fetchP(sym){
+  /* Yahoo Finance live price endpoint supports only FX:* symbols (forex pairs).
+     For indices/CFDs (US30.cash, US100.cash) ο TradingView iframe δείχνει live price — skip το polling. */
+  if(sym.indexOf('FX:')!==0) return;
+  fetch('https://query1.finance.yahoo.com/v8/finance/chart/'+sym.replace('FX:','')+'=X?interval=1m&range=1d')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var m=d&&d.chart&&d.chart.result&&d.chart.result[0]&&d.chart.result[0].meta;
+      if(m&&m.regularMarketPrice) showP(m.regularMarketPrice,m.previousClose);
+    }).catch(function(){});
+}
+function showP(p,prev){
+  var pr=pp(), sym=pr[0];
+  var isJ=sym.includes('JPY');
+  var isIdx=pr[5] && parseFloat(pr[5])<100;
+  var lpEl=document.getElementById('lp');
+  if(lpEl) lpEl.textContent=p.toFixed(isIdx?1:(isJ?3:5));
+  if(prev){
+    var diff=p-prev,pct=(diff/prev*100).toFixed(2),up=diff>=0;
+    var el=document.getElementById('pc');
+    if(el){ el.textContent=(up?'+':'')+pct+'%'; el.className='pc '+(up?'up':'dn'); el.style.display='block'; }
+    if(lpEl) lpEl.style.color=up?'var(--gn)':'var(--rd)';
+  }
+}
+
+/* ══ MT5 BRIDGE ══ */
+var M5='http://localhost:5678';
+function m5Ping(){
+  var mt=document.getElementById('m5t'); if(mt) mt.textContent='Σύνδεση...';
+  fetch(M5+'/status',{signal:AbortSignal.timeout(2000)})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.status==='ok') setM5(true,'Συνδεδεμένο · €'+(d.balance?d.balance.toFixed(2):'—'));
+      else setM5(false,'MT5 bridge error');
+    }).catch(function(){setM5(false,'Δεν βρέθηκε MT5 bridge — τρέξε mt5_bridge.py');});
+}
+function setM5(ok,msg){
+  m5Ok=ok;
+  ['m5i','m5dTop'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(!el) return;
+    el.className=el.className.replace(/ on| off/,'')+(ok?' on':' off');
+  });
+  var mt=document.getElementById('m5t'); if(mt) mt.textContent=msg;
+  var af=document.getElementById('m5af'); if(af) af.disabled=!ok;
+}
+function fillM5(){
+  fetch(M5+'/price/'+pp()[0])
+    .then(function(r){return r.json();})
+    .then(function(d){ if(d.ask){ document.getElementById('entry').value=d.ask; calc(); }})
+    .catch(function(){});
+}
+function togM5(){ var el=document.getElementById('m5e'); if(el) el.classList.toggle('open'); }
+setInterval(function(){ if(m5Ok) m5Ping(); },30000);
+
+var PY='#!/usr/bin/env python3\n"""FTMO MT5 Bridge\npip install MetaTrader5 flask flask-cors\npython mt5_bridge.py\n"""\nfrom flask import Flask,jsonify\nfrom flask_cors import CORS\nimport MetaTrader5 as mt5\napp=Flask(__name__)\nCORS(app)\ndef init():\n    return mt5.initialize()\n@app.route("/status")\ndef status():\n    ok=init()\n    info=mt5.account_info() if ok else None\n    return jsonify({"status":"ok" if ok else "error","balance":info.balance if info else None,"currency":info.currency if info else None})\n@app.route("/price/<symbol>")\ndef price(symbol):\n    if not init(): return jsonify({"error":"not connected"}),500\n    t=mt5.symbol_info_tick(symbol)\n    if not t: return jsonify({"error":"not found"}),404\n    return jsonify({"bid":round(t.bid,6),"ask":round(t.ask,6)})\n@app.route("/account")\ndef account():\n    if not init(): return jsonify({"error":"not connected"}),500\n    i=mt5.account_info()\n    return jsonify({"balance":i.balance,"equity":i.equity,"free_margin":i.margin_free,"currency":i.currency})\nif __name__=="__main__":\n    print("MT5 Bridge -> http://localhost:5678")\n    app.run("127.0.0.1",5678)\n';
+function dlM5(){
+  var a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([PY],{type:'text/plain'})),download:'mt5_bridge.py'});
+  a.click();
+}
+
+/* ══ RISK ══ */
+function setR(v){
+  rPct=v;
+  var rr=document.getElementById('rR'); if(rr) rr.value=v;
+  updR();
+  document.querySelectorAll('#riskPresets .preset').forEach(function(b){ b.classList.toggle('active',parseFloat(b.dataset.val)===v); });
+  calc();
+}
+function updR(){
+  var e=Math.round(BAL*rPct/100);
+  var d=document.getElementById('rD'), ev=document.getElementById('rE'), rr=document.getElementById('rR');
+  if(d) d.textContent=rPct+'%';
+  if(ev) ev.textContent='= €'+e.toLocaleString();
+  if(rr){
+    var pct=(rPct-.25)/(5-.25)*100;
+    rr.style.background='linear-gradient(to right,#4f8ef7 '+pct+'%,#22263a '+pct+'%)';
+  }
+}
+document.getElementById('rR').addEventListener('input',function(){
+  rPct=parseFloat(this.value); updR();
+  document.querySelectorAll('#riskPresets .preset').forEach(function(b){ b.classList.toggle('active',parseFloat(b.dataset.val)===rPct); });
+  calc();
+});
+
+/* ══ R:R TARGET — auto-fill TP από Entry+SL+R:R ══ */
+function setRR(v){
+  rrRatio=v;
+  updRR();
+  document.querySelectorAll('#rrPresets .preset').forEach(function(b){ b.classList.toggle('active',parseFloat(b.dataset.val)===v); });
+  autoFillTP(); calc();
+}
+function updRR(){
+  var rr=document.getElementById('rrR');
+  if(rr){
+    var clamped=Math.min(Math.max(rrRatio,.5),5);
+    rr.value=clamped;
+    var pct=(clamped-.5)/(5-.5)*100;
+    rr.style.background='linear-gradient(to right,#4f8ef7 '+pct+'%,#22263a '+pct+'%)';
+  }
+  /* Skip το input update αν ο χρήστης πληκτρολογεί εκείνη τη στιγμή */
+  var inp=document.getElementById('rrInp');
+  if(inp && document.activeElement!==inp) inp.value=rrRatio;
+}
+function autoFillTP(){
+  var p=pp(), pipSz=parseFloat(p[1]);
+  var contractSize=p[5]?parseFloat(p[5]):100000;
+  var isIdx=contractSize<100;
+  var entry=numVal('entry');
+  var sl=numVal('sl');
+  if(!entry||!sl||isNaN(entry)||isNaN(sl)) return;
+  var slDist=Math.abs(entry-sl);
+  var tpDist=slDist*rrRatio;
+  var isBuy=sl<entry;
+  var tp=isBuy?entry+tpDist:entry-tpDist;
+  var dec=isIdx?1:(p[1]==='0.01'?3:5);
+  document.getElementById('tp').value=tp.toFixed(dec);
+}
+document.getElementById('rrR').addEventListener('input',function(){
+  rrRatio=parseFloat(this.value); updRR();
+  document.querySelectorAll('#rrPresets .preset').forEach(function(b){ b.classList.toggle('active',parseFloat(b.dataset.val)===rrRatio); });
+  autoFillTP(); calc();
+});
+/* Direct typing στο R:R input — επιτρέπει custom values όπως 1:1.7 ή 1:4.2 */
+document.getElementById('rrInp').addEventListener('input',function(){
+  var v=parseFloat(String(this.value||'').replace(',','.'));
+  if(isNaN(v)||v<=0) return;
+  rrRatio=v; updRR();
+  document.querySelectorAll('#rrPresets .preset').forEach(function(b){ b.classList.toggle('active',parseFloat(b.dataset.val)===v); });
+  autoFillTP(); calc();
+});
+
+/* ══ CALCULATOR — correct pip value formula ══ */
+function calc(){
+  var p=pp(), pipSz=parseFloat(p[1]), qCcy=p[2], pCode=p[0];
+  var contractSize=p[5]?parseFloat(p[5]):100000;
+  var isIdx=contractSize<100;
+  var unit=isIdx?'points':'pips';
+  var unitCap=isIdx?'Point':'Pip';
+  var entry=numVal('entry');
+  var sl=numVal('sl');
+  var tp=numVal('tp');
+  var box=document.getElementById('resCard');
+  if(!box) return;
+
+  if(!entry||!sl||isNaN(entry)||isNaN(sl)){
+    box.innerHTML='<div class="empty"><div class="ei">📊</div><div>Συμπλήρωσε entry και SL<br>για να δεις το lot size</div></div>';
+    return;
+  }
+  var slPips=Math.abs(entry-sl)/pipSz;
+  if(slPips<.05){
+    box.innerHTML='<div class="empty"><div class="ei">⚠️</div><div>Entry και SL πολύ κοντά — έλεγξε τιμές</div></div>';
+    return;
+  }
+
+  /* ✅ pip/point value formula:
+     Forex:   pip_size × 100,000 × quote_to_EUR
+              EURUSD: 0.0001 × 100000 × 0.917 = 9.17 EUR/pip/lot
+              USDJPY: 0.01 × 100000 × 0.00617 = 6.17 EUR/pip/lot
+     Indices (FTMO US30.cash / US100.cash): point_size × 1 × quote_to_EUR
+              US30/US100: 1 × 1 × 0.917 = 0.917 EUR/point/lot  ($1/point/lot) */
+  var pv=pipVal(pipSz, qCcy, contractSize);
+  var riskEur=BAL*rPct/100;
+  var rawLot=riskEur/(slPips*pv);
+  var lot=Math.round(rawLot*100)/100;
+  var lotStr=fmtLot(lot);
+  var minLot=(Math.round(rawLot*1000)/1000).toFixed(3);
+  var isBuy=sl<entry;
+  var hasTp=tp&&!isNaN(tp);
+  var tpPips=0,rr=0,profit=0;
+  if(hasTp){ tpPips=Math.abs(entry-tp)/pipSz; rr=Math.round(tpPips/slPips*100)/100; profit=Math.round(lot*tpPips*pv); }
+  var maxD=Math.round(BAL*.05), maxT=Math.round(BAL*.10);
+
+  var tpHtml=hasTp?
+    '<div class="met"><div class="ml">TP '+unit+'</div><div class="mv w">'+Math.round(tpPips)+'</div></div>'+
+    '<div class="met"><div class="ml">R : R</div><div class="mv b">1 : '+rr+'</div></div>'+
+    '<div class="met"><div class="ml">Πιθ. κέρδος</div><div class="mv g">€'+profit.toLocaleString()+'</div></div>'
+    :'<div class="met" style="grid-column:span 2"><div class="ml">'+unitCap+' € / lot</div><div class="mv b">€'+pv.toFixed(2)+'</div></div>';
+
+  box.innerHTML=
+    '<div class="lot-box">'+
+      '<div class="lot-lbl">Lot Size — MT5 Style</div>'+
+      '<div class="lot-row">'+
+        '<span class="lot-dir '+(isBuy?'buy':'sell')+'">'+(isBuy?'buy':'sell')+'</span>'+
+        '<span class="lot-num">'+lotStr+'</span>'+
+        '<span class="lot-u">lots</span>'+
+      '</div>'+
+      '<div class="lot-sub">Ακριβές: '+minLot+' lots · '+unitCap+' value: €'+pv.toFixed(2)+'/lot</div>'+
+    '</div>'+
+    '<div class="mets">'+
+      '<div class="met"><div class="ml">Ρίσκο €</div><div class="mv r">€'+Math.round(riskEur).toLocaleString()+'</div></div>'+
+      '<div class="met"><div class="ml">SL '+unit+'</div><div class="mv w">'+Math.round(slPips)+'</div></div>'+
+      '<div class="met"><div class="ml">Κατεύθυνση</div><div class="mv '+(isBuy?'b':'r')+'">'+(isBuy?'▲ BUY':'▼ SELL')+'</div></div>'+
+      tpHtml+
+    '</div>'+
+    '<div class="lims">'+
+      '<div class="li">Max daily: <strong>€'+maxD.toLocaleString()+'</strong></div>'+
+      '<div class="li">Max drawdown: <strong>€'+maxT.toLocaleString()+'</strong></div>'+
+    '</div>'+
+    (qCcy!=='EUR'&&qCcy!=='USD'&&!isIdx?'<div class="an">* Προσεγγιστικό EUR rate για '+pCode+'</div>':'')+
+    (isIdx?'<div class="an">* '+pCode+': 1 lot = $1 ανά point (FTMO MT5 standard)</div>':'')+
+    (rPct>=4?'<div class="wb"><span>⚠️</span><span>Ρίσκο ≥4% — Πρόσεχε daily limit FTMO!</span></div>':'');
+}
+
+document.getElementById('pair').addEventListener('change',function(){ onPairChange(); autoFillTP(); calc(); });
+/* Entry/SL → auto-fill TP από R:R, μετά recalc. TP manual edit → μόνο recalc */
+['entry','sl'].forEach(function(id){ document.getElementById(id).addEventListener('input',function(){ autoFillTP(); calc(); }); });
+document.getElementById('tp').addEventListener('input',calc);
+
+/* ══ API KEY ══ */
+function saveKey(){
+  var v=document.getElementById('apiKey').value.trim();
+  if(v){ localStorage.setItem('ftmo_k',v); setSt('✓ API key αποθηκεύτηκε','var(--gn)'); }
+}
+function loadKey(){ var k=localStorage.getItem('ftmo_k'); if(k) document.getElementById('apiKey').value=k; }
+function setSt(msg,col){
+  var el=document.getElementById('aiSt');
+  if(!el) return;
+  el.textContent=msg; el.style.color=col||'var(--mu)'; el.classList.add('show');
+}
+
+/* ══ PASTE / DROP ══ */
+/* Global Ctrl+V — works anywhere */
+document.addEventListener('paste',function(e){
+  var items=(e.clipboardData&&e.clipboardData.items)||[];
+  for(var i=0;i<items.length;i++){
+    if(items[i].type.startsWith('image/')){
+      swTab('ai');
+      handleBlob(items[i].getAsFile());
+      return;
+    }
+  }
+});
+
+/* Enter key → analyze (when image is loaded) */
+document.addEventListener('keydown',function(e){
+  if(e.key==='Enter' && imgB64){
+    var aiTab=document.getElementById('contentAI');
+    if(aiTab && aiTab.classList.contains('visible')){
+      e.preventDefault();
+      doAnalyze();
+    }
+  }
+});
+
+var pz=document.getElementById('pz');
+pz.addEventListener('dragover',function(e){ e.preventDefault(); pz.classList.add('drag'); });
+pz.addEventListener('dragleave',function(){ pz.classList.remove('drag'); });
+pz.addEventListener('drop',function(e){
+  e.preventDefault(); pz.classList.remove('drag');
+  var f=e.dataTransfer.files[0];
+  if(f&&f.type.startsWith('image/')) handleBlob(f);
+});
+pz.addEventListener('click',function(e){
+  if(e.target.id==='pzX'||e.target.closest('#pzX')) return;
+  if(imgB64) return;
+  var inp=document.createElement('input');
+  inp.type='file'; inp.accept='image/*';
+  inp.onchange=function(ev){ if(ev.target.files[0]) handleBlob(ev.target.files[0]); };
+  inp.click();
+});
+/* Also paste when zone is focused */
+pz.addEventListener('paste',function(e){
+  var items=(e.clipboardData&&e.clipboardData.items)||[];
+  for(var i=0;i<items.length;i++){
+    if(items[i].type.startsWith('image/')){ handleBlob(items[i].getAsFile()); return; }
+  }
+});
+
+function handleBlob(blob){
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    imgB64=ev.target.result.split(',')[1];
+    var img=document.getElementById('pzImg');
+    var inn=document.getElementById('pzInner');  /* Note: element is pzInn in HTML */
+    var pzX=document.getElementById('pzX');
+    var eh=document.getElementById('enterHint');
+    var btn=document.getElementById('anlBtn');
+
+    if(img){ img.src=ev.target.result; img.style.display='block'; }
+    /* Hide instructions — try both possible IDs */
+    var pzInnEl=document.getElementById('pzInn')||document.getElementById('pzInner');
+    if(pzInnEl) pzInnEl.style.display='none';
+    if(pzX) pzX.style.display='flex';
+    if(pz) pz.classList.add('has-img');
+    if(eh) eh.classList.add('show');
+    if(btn) btn.disabled=false;
+    var ar=document.getElementById('aiRes'); if(ar) ar.classList.remove('show');
+    setSt('✓ Screenshot φορτώθηκε — πάτα Enter ή κουμπί για ανάλυση','var(--gn)');
+  };
+  reader.readAsDataURL(blob);
+}
+
+function clearPaste(e){
+  if(e) e.stopPropagation();
+  imgB64=null; aiDat=null;
+  var img=document.getElementById('pzImg');
+  var pzInnEl=document.getElementById('pzInn')||document.getElementById('pzInner');
+  var pzX=document.getElementById('pzX');
+  var eh=document.getElementById('enterHint');
+  var btn=document.getElementById('anlBtn');
+  var ar=document.getElementById('aiRes');
+  var ast=document.getElementById('aiSt');
+  if(img){ img.style.display='none'; img.src=''; }
+  if(pzInnEl) pzInnEl.style.display='';
+  if(pzX) pzX.style.display='none';
+  if(pz) pz.classList.remove('has-img');
+  if(eh) eh.classList.remove('show');
+  if(btn) btn.disabled=true;
+  if(ar) ar.classList.remove('show');
+  if(ast) ast.classList.remove('show');
+}
+
+function doAnalyze(){
+  var key=document.getElementById('apiKey').value.trim()||localStorage.getItem('ftmo_k')||'';
+  if(!key){ setSt('⚠ Βάλε Claude API Key πρώτα!','var(--rd)'); return; }
+  if(!imgB64){ setSt('⚠ Κάνε paste screenshot πρώτα.','var(--am)'); return; }
+
+  var btn=document.getElementById('anlBtn');
+  if(btn){ btn.disabled=true; btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Αναλύεται...'; }
+  setSt('Αποστολή στο Claude AI...','var(--bl)');
+
+  var prompt='You are an expert forex chart analyst. Examine this trading chart screenshot carefully.\n\nExtract these values:\n- Entry price: entry line, highlighted price, or current price\n- Stop Loss (SL): red line labeled SL, or resistance/support used as stop\n- Take Profit (TP): green line labeled TP, or target level\n- Currency pair name if visible\n- Trade direction: BUY/LONG or SELL/SHORT\n\nRespond ONLY with valid JSON (no markdown, no explanation):\n{"entry":number_or_null,"sl":number_or_null,"tp":number_or_null,"pair":"string_or_null","direction":"BUY or SELL or null","note":"σύντομη παρατήρηση στα Ελληνικά, max 100 chars"}';
+
+  fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':key,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:500,
+      messages:[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:'image/png',data:imgB64}},
+        {type:'text',text:prompt}
+      ]}]
+    })
+  }).then(function(r){
+    if(!r.ok) return r.json().then(function(e){throw new Error(e.error&&e.error.message||'API Error '+r.status);});
+    return r.json();
+  }).then(function(data){
+    var raw=((data.content&&data.content[0]&&data.content[0].text)||'{}').replace(/```json|```/g,'').trim();
+    var parsed;
+    try{ parsed=JSON.parse(raw); }catch(ex){ throw new Error('Μη έγκυρη απάντηση AI'); }
+    aiDat=parsed;
+    var ae=document.getElementById('aEntry'), asl=document.getElementById('aSL'), atp=document.getElementById('aTP'), an=document.getElementById('aNote'), ar=document.getElementById('aiRes');
+    if(ae) ae.textContent=parsed.entry!=null?parsed.entry:'—';
+    if(asl) asl.textContent=parsed.sl!=null?parsed.sl:'—';
+    if(atp) atp.textContent=parsed.tp!=null?parsed.tp:'—';
+    if(an) an.textContent=parsed.note||'Ανάλυση ολοκληρώθηκε.';
+    if(ar) ar.classList.add('show');
+    setSt('✓ Ανάλυση ολοκληρώθηκε — πάτα "Αυτόματη συμπλήρωση"','var(--gn)');
+  }).catch(function(e){
+    setSt('❌ '+e.message,'var(--rd)');
+  }).finally(function(){
+    var btn=document.getElementById('anlBtn');
+    if(btn){ btn.disabled=!imgB64; btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Ανάλυση με AI — Εξαγωγή Entry / SL / TP'; }
+  });
+}
+
+function fillAI(){
+  if(!aiDat) return;
+  if(aiDat.entry!=null) document.getElementById('entry').value=aiDat.entry;
+  if(aiDat.sl!=null)    document.getElementById('sl').value=aiDat.sl;
+  if(aiDat.tp!=null)    document.getElementById('tp').value=aiDat.tp;
+  swTab('chart'); calc();
+}
+
+/* ══ INIT ══ */
+updR(); updRR(); loadKey();
+var initP=pp();
+var cpEl=document.getElementById('cpair');
+if(cpEl) cpEl.textContent=initP[4];
+loadChart(initP[3],'240');
+m5Ping();
+setInterval(function(){ if(m5Ok) m5Ping(); },30000);
+</script>
+</body>
+</html>
